@@ -54,7 +54,7 @@ module XMonad.StackSet (
     ) where
 
 import Prelude hiding (filter)
-import Data.Maybe   (listToMaybe,isJust,fromMaybe)
+import Data.Maybe (listToMaybe,isJust,fromMaybe)
 import qualified Data.List as L (deleteBy,find,splitAt,filter,nub)
 import Data.List ( (\\) )
 import qualified Data.Map  as M (Map,insert,delete,empty)
@@ -80,7 +80,8 @@ import qualified Data.Map  as M (Map,insert,delete,empty)
 
 -- $zipper
 --
--- We encode all the focus tracking directly in the data structure, with a 'zipper':
+-- We encode all the focus tracking directly in the data structure,
+-- with a 'zipper':
 --
 --    A Zipper is essentially an `updateable' and yet pure functional
 --    cursor into a data structure. Zipper is also a delimited
@@ -91,7 +92,8 @@ import qualified Data.Map  as M (Map,insert,delete,empty)
 --    resulting data structure will share as much of its components with
 --    the old structure as possible.
 --
---      Oleg Kiselyov, 27 Apr 2005, haskell\@, "Zipper as a delimited continuation"
+--      Oleg Kiselyov, 27 Apr 2005, haskell\@, "Zipper as a delimited
+--      continuation"
 --
 -- We use the zipper to keep track of the focused workspace and the
 -- focused window on each workspace, allowing us to have correct focus
@@ -134,10 +136,14 @@ import qualified Data.Map  as M (Map,insert,delete,empty)
 -- Xinerama screens, and those workspaces not visible anywhere.
 
 data StackSet i l a sid sd =
-    StackSet { current  :: !(Screen i l a sid sd)    -- ^ currently focused workspace
-             , visible  :: [Screen i l a sid sd]     -- ^ non-focused workspaces, visible in xinerama
-             , hidden   :: [Workspace i l a]         -- ^ workspaces not visible anywhere
-             , floating :: M.Map a RationalRect      -- ^ floating windows
+    StackSet { -- | currently focused workspace
+               current  :: !(Screen i l a sid sd)
+               -- | non-focused workspaces, visible in xinerama
+             , visible  :: [Screen i l a sid sd]
+               -- | workspaces not visible anywhere
+             , hidden   :: [Workspace i l a]
+               -- | floating windows
+             , floating :: M.Map a RationalRect
              } deriving (Show, Read, Eq)
 
 -- | Visible workspaces, and their Xinerama screens.
@@ -149,7 +155,9 @@ data Screen i l a sid sd = Screen { workspace :: !(Workspace i l a)
 -- |
 -- A workspace is just a tag, a layout, and a stack.
 --
-data Workspace i l a = Workspace  { tag :: !i, layout :: l, stack :: Maybe (Stack a) }
+data Workspace i l a = Workspace  { tag :: !i,
+                                    layout :: l,
+                                    stack :: Maybe (Stack a) }
     deriving (Show, Read, Eq)
 
 -- | A structure for window geometries
@@ -193,7 +201,8 @@ abort x = error $ "xmonad: StackSet: " ++ x
 -- equal to the number of workspace tags.  The first workspace in the
 -- list will be current.
 --
--- Xinerama: Virtual workspaces are assigned to physical screens, starting at 0.
+-- Xinerama: Virtual workspaces are assigned to physical screens,
+-- starting at 0.
 --
 new :: (Integral s) => l -> [i] -> [sd] -> StackSet i l a s sd
 new l wids m | not (null wids) && length m <= length wids && not (null m)
@@ -272,15 +281,16 @@ with :: b -> (Stack a -> b) -> StackSet i l a s sd -> b
 with dflt f = maybe dflt f . stack . workspace . current
 
 -- |
--- Apply a function, and a default value for 'Nothing', to modify the current stack.
+-- Apply a function, and a default value for 'Nothing', to modify the
+-- current stack.
 --
 modify :: Maybe (Stack a) -> (Stack a -> Maybe (Stack a)) -> StackSet i l a s sd -> StackSet i l a s sd
 modify d f s = s { current = (current s)
                         { workspace = (workspace (current s)) { stack = with d f s }}}
 
 -- |
--- Apply a function to modify the current stack if it isn't empty, and we don't
---  want to empty it.
+-- Apply a function to modify the current stack if it isn't empty, and
+-- we don't want to empty it.
 --
 modify' :: (Stack a -> Stack a) -> StackSet i l a s sd -> StackSet i l a s sd
 modify' f = modify Nothing (Just . f)
@@ -482,8 +492,9 @@ insertUp a s = if member a s then s else insert
 delete :: (Ord a, Eq s) => a -> StackSet i l a s sd -> StackSet i l a s sd
 delete w = sink w . delete' w
 
--- | Only temporarily remove the window from the stack, thereby not destroying special
--- information saved in the 'Stackset'
+-- |
+-- Only temporarily remove the window from the stack, thereby not
+-- destroying special information saved in the 'Stackset'
 delete' :: (Eq a, Eq s) => a -> StackSet i l a s sd -> StackSet i l a s sd
 delete' w s = s { current = removeFromScreen        (current s)
                 , visible = map removeFromScreen    (visible s)
@@ -506,8 +517,8 @@ sink w s = s { floating = M.delete w (floating s) }
 -- $settingMW
 
 -- | /O(s)/. Set the master window to the focused window.
--- The old master window is swapped in the tiling order with the focused window.
--- Focus stays with the item moved.
+-- The old master window is swapped in the tiling order with the
+-- focused window.  Focus stays with the item moved.
 swapMaster :: StackSet i l a s sd -> StackSet i l a s sd
 swapMaster = modify' $ \c -> case c of
     Stack _ [] _  -> c    -- already master.
@@ -516,9 +527,9 @@ swapMaster = modify' $ \c -> case c of
 -- natural! keep focus, move current to the top, move top to current.
 
 -- | /O(s)/. Set the master window to the focused window.
--- The other windows are kept in order and shifted down on the stack, as if you
--- just hit mod-shift-k a bunch of times.
--- Focus stays with the item moved.
+-- The other windows are kept in order and shifted down on the stack,
+-- as if you just hit mod-shift-k a bunch of times.  Focus stays with
+-- the item moved.
 shiftMaster :: StackSet i l a s sd -> StackSet i l a s sd
 shiftMaster = modify' $ \c -> case c of
     Stack _ [] _ -> c     -- already master.
