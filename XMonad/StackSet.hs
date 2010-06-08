@@ -36,16 +36,18 @@ module XMonad.StackSet (
         -- $stackOperations
         peek, index, integrate, integrate', differentiate,
         focusUp, focusDown, focusUp', focusDown', focusMaster, focusWindow,
-        tagMember, renameTag, ensureTags, member, findTag, mapWorkspace, mapLayout,
+        swapUp, swapDown,  modify, modify',
+        tagMember, renameTag, ensureTags, member, findTag,
+        mapWorkspace, mapLayout,
         -- * Modifying the stackset
         -- $modifyStackset
         insertUp, delete, delete', filter,
         -- * Setting the master window
         -- $settingMW
-        swapUp, swapDown, swapMaster, shiftMaster, modify, modify', float, sink, -- needed by users
+        swapMaster, shiftMaster,
         -- * Composite operations
         -- $composite
-        shift, shiftWin,
+        shift, shiftWin, float, sink,
 
         -- for testing
         abort
