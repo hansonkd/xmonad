@@ -254,7 +254,7 @@ class Show (layout a) => LayoutClass layout a where
     runLayout :: Workspace WorkspaceId (layout a) a
               -> Rectangle
               -> X ([(a, Rectangle)], Maybe (layout a))
-    runLayout (Workspace _ l ms) r = maybe (emptyLayout l r) (doLayout l r) ms
+    runLayout (Workspace _ l ms _) r = maybe (emptyLayout l r) (doLayout l r) ms
 
     -- | Given a 'Rectangle' in which to place the windows, and a 'Stack'
     -- of windows, return a list of windows and their corresponding
@@ -310,7 +310,8 @@ class Show (layout a) => LayoutClass layout a where
     description      = show
 
 instance LayoutClass Layout Window where
-    runLayout (Workspace i (Layout l) ms) r = fmap (fmap Layout) `fmap` runLayout (Workspace i l ms) r
+    runLayout (Workspace i (Layout l) ms f) r
+        = fmap (fmap Layout) `fmap` runLayout (Workspace i l ms f) r
     doLayout (Layout l) r s  = fmap (fmap Layout) `fmap` doLayout l r s
     emptyLayout (Layout l) r = fmap (fmap Layout) `fmap` emptyLayout l r
     handleMessage (Layout l) = fmap (fmap Layout) . handleMessage l

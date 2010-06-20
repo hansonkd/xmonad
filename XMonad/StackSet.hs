@@ -142,8 +142,6 @@ data StackSet i l a sid sd =
              , visible  :: [Screen i l a sid sd]
                -- | workspaces not visible anywhere
              , hidden   :: [Workspace i l a]
-               -- | floating windows
-             , floating :: M.Map a RationalRect
              } deriving (Show, Read, Eq)
 
 -- | Visible workspaces, and their Xinerama screens.
@@ -157,8 +155,14 @@ data Screen i l a sid sd = Screen { workspace :: !(Workspace i l a)
 --
 data Workspace i l a = Workspace  { tag :: !i,
                                     layout :: l,
-                                    stack :: Maybe (Stack a) }
+                                    stack :: Maybe (Stack a),
+                                    floating :: Floats a }
     deriving (Show, Read, Eq)
+
+-- |
+-- floats are stored as a map from window ids to window shapes
+--
+type Floats a = M.Map a RationalRect
 
 -- | A structure for window geometries
 data RationalRect = RationalRect Rational Rational Rational Rational
@@ -206,9 +210,9 @@ abort x = error $ "xmonad: StackSet: " ++ x
 --
 new :: (Integral s) => l -> [i] -> [sd] -> StackSet i l a s sd
 new l wids m | not (null wids) && length m <= length wids && not (null m)
-  = StackSet cur visi unseen M.empty
+  = StackSet cur visi unseen
   where (seen,unseen) = L.splitAt (length m) createSpaces
-        createSpaces  = map (\i -> Workspace i l Nothing) wids
+        createSpaces  = map (\i -> Workspace i l Nothing M.empty) wids
         (cur:visi)    = [ Screen i s sd |  (i, s, sd) <- zip3 seen [0..] m ]
                 -- now zip up visibles with their screen id
 new _ _ _ = abort "non-positive argument to StackSet.new"
@@ -432,7 +436,8 @@ ensureTags l allt st = et allt (map tag (workspaces st) \\ allt) st
           et (i:is) [] s                   = et is [] $ createHidden s i
           et (i:is) (r:rs) s               = et is rs $ renameTag r i s
 
-          createHidden s i = s { hidden = Workspace i l Nothing : hidden s }
+          createHidden s i = let ws = Workspace i l Nothing M.empty
+                             in  s { hidden = ws : hidden s }
 
 -- | Map a function on all the workspaces in the 'StackSet'.
 mapWorkspace :: (Workspace i l a -> Workspace i l a)
@@ -445,11 +450,11 @@ mapWorkspace f s = s { current = updScr (current s)
 
 -- | Map a function on all the layouts in the 'StackSet'.
 mapLayout :: (l -> l') -> StackSet i l a s sd -> StackSet i l' a s sd
-mapLayout f (StackSet v vs hs m) =
-    StackSet (fScreen v) (map fScreen vs) (map fWorkspace hs) m
+mapLayout f (StackSet v vs hs) =
+    StackSet (fScreen v) (map fScreen vs) (map fWorkspace hs)
  where
     fScreen (Screen ws s sd) = Screen (fWorkspace ws) s sd
-    fWorkspace (Workspace t l s) = Workspace t (f l) s
+    fWorkspace (Workspace t l s m) = Workspace t (f l) s m
 
 -- | /O(n)/. Is a window in the 'StackSet'?
 member :: Eq a => a -> StackSet i l a s sd -> Bool
@@ -527,11 +532,19 @@ delete' w s = s { current = removeFromScreen        (current s)
 -- A floating window should already be managed by the 'StackSet'.
 float :: Ord a =>
          a -> RationalRect -> StackSet i l a s sd -> StackSet i l a s sd
-float w r s = s { floating = M.insert w r (floating s) }
+float w r = modifyFloats $ M.insert w r
 
 -- | Clear the floating status of a window
 sink :: Ord a => a -> StackSet i l a s sd -> StackSet i l a s sd
-sink w s = s { floating = M.delete w (floating s) }
+sink w = modifyFloats $ M.delete w
+
+modifyFloats
+    :: Ord a =>
+       (Floats a -> Floats a) -> StackSet i l a s sd -> StackSet i l a s sd
+modifyFloats f s = s { current = c { workspace = ws { floating = f floats } } }
+    where c      = current s
+          ws     = workspace c
+          floats = floating ws
 
 ------------------------------------------------------------------------
 -- $settingMW
