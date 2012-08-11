@@ -47,7 +47,7 @@ Building:
         apt-get install ghc6
 
     It shouldn't be necessary to compile GHC from source -- every common
-    system has a pre-build binary version.
+    system has a pre-built binary version.
 
  * X11 libraries:
 
